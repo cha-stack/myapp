@@ -74,16 +74,16 @@ try{sb=window.supabase.createClient(SUPA_URL,SUPA_KEY)}catch(e){}
 function st(m){var e=$('sync');if(e)e.textContent=m}
 function sv(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
 if(!sb||!uidc)return;st('Menyimpan…');clearTimeout(tm);tm=setTimeout(async function(){var r=await sb.from('isc_state').upsert({user_id:uidc,data:S,updated_at:new Date().toISOString()});st(r.error?'Gagal simpan: '+r.error.message:'Tersimpan ✓')},600)}
-var reg=false;
-function loginView(m){$('nav').innerHTML='';$('v').innerHTML='<div class="card"><h3>'+(reg?'Daftar akun':'Masuk')+'</h3>'+(m?'<div class="em late">'+esc(m)+'</div>':'')+'<div class="row"><input id="un" placeholder="Username" autocapitalize="none" autocomplete="username">'+(reg?'<input id="em" type="email" placeholder="Email (hanya untuk daftar)">':'')+'<input id="pw" type="password" placeholder="Password (min. 6 karakter)" autocomplete="current-password"></div><div class="row"><button class="b" onclick="auth()">'+(reg?'Daftar':'Masuk')+'</button><button class="b" style="background:var(--mu)" onclick="reg=!reg;loginView(\'\')">'+(reg?'Sudah punya akun':'Daftar akun baru')+'</button></div></div>'}
+var reg=false,DOM='@isc-ketua.app';
+function loginView(m){$('nav').innerHTML='';$('v').innerHTML='<div class="card"><h3>'+(reg?'Buat akun':'Masuk')+'</h3>'+(m?'<div class="em late">'+esc(m)+'</div>':'')+'<div class="row"><input id="un" placeholder="Username" autocapitalize="none" autocomplete="username"><input id="pw" type="password" placeholder="Password (min. 6 karakter)" autocomplete="current-password"></div><div class="row"><button class="b" onclick="auth()">'+(reg?'Daftar':'Masuk')+'</button><button class="b" style="background:var(--mu)" onclick="reg=!reg;loginView(\'\')">'+(reg?'Sudah punya akun':'Buat akun baru')+'</button></div></div>'}
 async function auth(){var u=val('un').toLowerCase(),p=$('pw').value;
 if(!/^[a-z0-9_]{3,20}$/.test(u))return loginView('Username 3-20 karakter: huruf kecil, angka, atau _');
-if(reg){var e=val('em');if(!e)return loginView('Isi email untuk daftar');var c=await sb.rpc('email_for_username',{u:u});if(c.data)return loginView('Username sudah dipakai');
-var r=await sb.auth.signUp({email:e,password:p,options:{data:{username:u}}});if(r.error)return loginView(r.error.message);
-if(!r.data.session){reg=false;return loginView('Cek email untuk konfirmasi, lalu masuk dengan username.')}
+if(p.length<6)return loginView('Password minimal 6 karakter');
+if(reg){var c=await sb.rpc('email_for_username',{u:u});if(c.data)return loginView('Username sudah dipakai');
+var r=await sb.auth.signUp({email:u+DOM,password:p,options:{data:{username:u}}});if(r.error)return loginView(r.error.message);
+if(!r.data.session)return loginView('Matikan "Confirm email" di Supabase (Authentication, Sign In / Providers, Email), lalu hapus user ini dan daftar ulang.');
 return start(r.data.session.user.id)}
-var q=await sb.rpc('email_for_username',{u:u});if(!q.data)return loginView('Username atau password salah');
-var r2=await sb.auth.signInWithPassword({email:q.data,password:p});if(r2.error)return loginView('Username atau password salah');
+var r2=await sb.auth.signInWithPassword({email:u+DOM,password:p});if(r2.error)return loginView('Username atau password salah');
 start(r2.data.session.user.id)}
 async function start(id){uidc=id;var r=await sb.from('isc_state').select('data').eq('user_id',id).maybeSingle();if(r.error)return loginView('Gagal memuat: '+r.error.message);if(r.data&&r.data.data){S=Object.assign(S,r.data.data);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}else sv();draw();st('Tersimpan ✓')}
 async function out(){if(!sb)return;await sb.auth.signOut();uidc=null;loginView('')}
